@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/codahale/hdrhistogram"
-	"github.com/tylertreat/hdrhistogram-writer"
+	histwriter "github.com/kishansairam9/bench/v2/hdrhistogram-writer"
+
+	"github.com/HdrHistogram/hdrhistogram-go"
 )
 
 // Summary contains the results of a Benchmark run.
