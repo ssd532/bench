@@ -13,6 +13,7 @@ require (
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
 	github.com/nats-io/stan.go v0.9.0
 	github.com/nsqio/go-nsq v1.0.8
+	github.com/rabbitmq/rabbitmq-stream-go-client v0.0.0-20210720070408-b04b01a752c3
 	github.com/streadway/amqp v1.0.0
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
 	google.golang.org/protobuf v1.27.1 // indirect

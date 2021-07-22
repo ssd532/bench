@@ -9,11 +9,10 @@ import (
 )
 
 func main() {
-	r := &requester.AMQPRequesterFactory{
-		URL:         "amqp://localhost:5672",
+	r := &requester.KafkaRequesterFactory{
+		URLs:        []string{"localhost:9092"},
 		PayloadSize: 1000,
-		Queue:       "benchqueue",
-		Exchange:    "benchmark",
+		Topic:       "benchmark",
 	}
 
 	benchmark := bench.NewBenchmark(r, 20000, 25, 30*time.Second, 0)
@@ -23,5 +22,5 @@ func main() {
 	}
 
 	fmt.Println(summary)
-	summary.GenerateLatencyDistribution(nil, "amqp.txt")
+	summary.GenerateLatencyDistribution(nil, "kafka.txt")
 }

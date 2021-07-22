@@ -9,19 +9,18 @@ import (
 )
 
 func main() {
-	r := &requester.AMQPRequesterFactory{
-		URL:         "amqp://localhost:5672",
+	r := &requester.RMQStreamRequesterFactory{
+		URLs:        []string{"localhost:9092"},
 		PayloadSize: 1000,
-		Queue:       "benchqueue",
-		Exchange:    "benchmark",
+		Stream:      "benchmark",
 	}
 
-	benchmark := bench.NewBenchmark(r, 20000, 25, 30*time.Second, 0)
+	benchmark := bench.NewBenchmark(r, 1000, 1, 30*time.Second, 0)
 	summary, err := benchmark.Run()
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println(summary)
-	summary.GenerateLatencyDistribution(nil, "amqp.txt")
+	summary.GenerateLatencyDistribution(nil, "rmqstream.txt")
 }
