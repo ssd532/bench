@@ -80,12 +80,14 @@ func (l *liftbridgeRequester) Setup() error {
 
 // Request performs a synchronous request to the system under test.
 func (l *liftbridgeRequester) Request() error {
-	l.client.PublishAsync(context.Background(), l.stream, l.msg,
+	if err := l.client.PublishAsync(context.Background(), l.stream, l.msg,
 		func(ack *lift.Ack, err error) {
 			if err != nil {
 				l.errch <- err
 			}
-		})
+		}); err != nil {
+		return err
+	}
 	select {
 	case <-l.inbound:
 	case err := <-l.errch:

@@ -1,0 +1,9 @@
+version: '3'
+services:
+  liftbridge:
+    image: liftbridge/standalone-dev
+    ports:
+      - "4222:4222"
+      - "9292:9292"
+      - "8222:8222"
+      - "6222:6222"
