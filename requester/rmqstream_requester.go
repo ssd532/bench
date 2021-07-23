@@ -50,7 +50,6 @@ func (r *rmqstreamRequester) Setup() error {
 			SetPort(5552).
 			SetUser("guest").
 			SetPassword("guest"))
-	r.env = env
 	if err != nil {
 		return err
 	}
@@ -69,7 +68,6 @@ func (r *rmqstreamRequester) Setup() error {
 
 	r.inbound = make(chan amqp.Message)
 	handleMessages := func(consumerContext stream.ConsumerContext, message *amqp.Message) {
-		// fmt.Printf("Sent 1 msg\n")
 		r.inbound <- *message
 	}
 
@@ -77,11 +75,13 @@ func (r *rmqstreamRequester) Setup() error {
 		r.stream,
 		handleMessages,
 		stream.NewConsumerOptions().
-			SetConsumerName("my_consumer"). // set a consumer name
+			SetConsumerName("benchmark_consumer").
 			SetOffset(stream.OffsetSpecification{}.First()))
 	if err != nil {
+		r.inbound = nil
 		return err
 	}
+	r.env = env
 	r.producer = producer
 	r.consumer = consumer
 	msg := make([]byte, r.payloadSize)
@@ -99,7 +99,6 @@ func (r *rmqstreamRequester) Request() error {
 	}
 	select {
 	case <-r.inbound:
-		// fmt.Printf("Recieved 1\n")
 	case <-time.After(30 * time.Second):
 		return errors.New("requester: Request timed out receiving")
 	}
@@ -123,5 +122,6 @@ func (r *rmqstreamRequester) Teardown() error {
 	r.consumer = nil
 	r.producer = nil
 	r.env = nil
+	r.inbound = nil
 	return nil
 }
