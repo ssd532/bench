@@ -16,7 +16,7 @@ func main() {
 		Exchange:    "benchmark",
 	}
 
-	benchmark := bench.NewBenchmark(r, 20000, 25, 30*time.Second, 0)
+	benchmark := bench.NewBenchmark(r, 1000, 1, 30*time.Second, 0)
 	summary, err := benchmark.Run()
 	if err != nil {
 		panic(err)

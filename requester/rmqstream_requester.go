@@ -8,6 +8,7 @@ import (
 
 	"github.com/kishansairam9/bench/v2"
 	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/amqp"
+	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/message"
 	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/stream"
 )
 
@@ -61,7 +62,7 @@ func (r *rmqstreamRequester) Setup() error {
 	if err != nil {
 		return err
 	}
-	producer, err := env.NewProducer(r.stream, nil)
+	producer, err := env.NewProducer(r.stream, stream.NewProducerOptions().SetBatchSize(1))
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func (r *rmqstreamRequester) Setup() error {
 
 // Request performs a synchronous request to the system under test.
 func (r *rmqstreamRequester) Request() error {
-	if err := r.producer.Send(r.msg); err != nil {
+	if err := r.producer.BatchSend([]message.StreamMessage{r.msg}); err != nil {
 		return err
 	}
 	select {
