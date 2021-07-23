@@ -10,9 +10,10 @@ import (
 
 func main() {
 	r := &requester.LiftbridgeRequesterFactory{
-		URLs:        []string{"localhost:9292"},
-		PayloadSize: 1000,
-		Stream:      "benchmark",
+		URLs:         []string{"localhost:9292"},
+		PayloadSize:  1000,
+		Stream:       "benchmark",
+		AsyncPublish: true,
 	}
 
 	benchmark := bench.NewBenchmark(r, 100000, 1, 30*time.Second, 0)

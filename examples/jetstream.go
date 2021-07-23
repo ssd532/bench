@@ -10,9 +10,11 @@ import (
 
 func main() {
 	r := &requester.JetStreamRequesterFactory{
-		URL:         "localhost:4222",
-		PayloadSize: 1000,
-		Stream:      "benchmark",
+		URL:                  "localhost:4222",
+		PayloadSize:          1000,
+		Stream:               "benchmark",
+		AsyncPublish:         true,
+		MaxPublishAckPending: 1000, // not useful if async publish false
 	}
 
 	benchmark := bench.NewBenchmark(r, 100000, 1, 30*time.Second, 0)

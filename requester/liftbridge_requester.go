@@ -3,8 +3,10 @@ package requester
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/kishansairam9/bench/v2"
@@ -14,32 +16,36 @@ import (
 // AMQPRequesterFactory implements RequesterFactory by creating a Requester
 // which publishes messages to an AMQP exchange and waits to consume them.
 type LiftbridgeRequesterFactory struct {
-	URLs        []string
-	PayloadSize int
-	Stream      string
+	URLs         []string
+	PayloadSize  int
+	Stream       string
+	AsyncPublish bool
 }
 
 // GetRequester returns a new Requester, called for each Benchmark connection.
-func (r *LiftbridgeRequesterFactory) GetRequester(num uint64) bench.Requester {
+func (l *LiftbridgeRequesterFactory) GetRequester(num uint64) bench.Requester {
 	return &liftbridgeRequester{
-		urls:        r.URLs,
-		payloadSize: r.PayloadSize,
-		subject:     r.Stream + "-" + strconv.FormatUint(num, 10),
-		stream:      r.Stream + "-" + strconv.FormatUint(num, 10) + "-stream",
+		urls:         l.URLs,
+		payloadSize:  l.PayloadSize,
+		subject:      l.Stream + "-" + strconv.FormatUint(num, 10),
+		stream:       l.Stream + "-" + strconv.FormatUint(num, 10) + "-stream",
+		asyncPublish: l.AsyncPublish,
 	}
 }
 
 // amqpRequester implements Requester by publishing a message to an AMQP
 // exhcnage and waiting to consume it.
 type liftbridgeRequester struct {
-	urls        []string
-	payloadSize int
-	stream      string
-	subject     string
-	client      lift.Client
-	inbound     chan lift.Message
-	errch       chan error
-	msg         []byte
+	urls         []string
+	payloadSize  int
+	stream       string
+	subject      string
+	client       lift.Client
+	inbound      chan lift.Message
+	errch        chan error
+	msg          []byte
+	asyncPublish bool
+	acksLeft     int64
 }
 
 // Setup prepares the Requester for benchmarking.
@@ -80,13 +86,23 @@ func (l *liftbridgeRequester) Setup() error {
 
 // Request performs a synchronous request to the system under test.
 func (l *liftbridgeRequester) Request() error {
-	if err := l.client.PublishAsync(context.Background(), l.stream, l.msg,
-		func(ack *lift.Ack, err error) {
-			if err != nil {
-				l.errch <- err
-			}
-		}); err != nil {
-		return err
+	if l.asyncPublish {
+		// For counting acks left to recieve
+		atomic.AddInt64(&l.acksLeft, 1)
+		if err := l.client.PublishAsync(context.Background(), l.stream, l.msg,
+			func(ack *lift.Ack, err error) {
+				if err != nil {
+					l.errch <- err
+				}
+				// For counting acks left to recieve
+				atomic.AddInt64(&l.acksLeft, -1)
+			}, lift.AckPolicyAll()); err != nil {
+			return err
+		}
+	} else {
+		if _, err := l.client.Publish(context.Background(), l.stream, l.msg, lift.AckPolicyAll()); err != nil {
+			return err
+		}
 	}
 	select {
 	case <-l.inbound:
@@ -100,6 +116,14 @@ func (l *liftbridgeRequester) Request() error {
 
 // Teardown is called upon benchmark completion.
 func (l *liftbridgeRequester) Teardown() error {
+	if l.asyncPublish {
+		fmt.Printf("Called teardown, yet to recieve %v acks\n", atomic.LoadInt64(&l.acksLeft))
+		// Wait to recieve acks
+		for atomic.LoadInt64(&l.acksLeft) > 0 {
+			fmt.Println("Waiting 5s to recieve acks, left " + fmt.Sprint(atomic.LoadInt64(&l.acksLeft)))
+			<-time.After(5 * time.Second)
+		}
+	}
 	err := l.client.Close()
 	if err != nil {
 		return err
