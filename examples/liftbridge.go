@@ -9,10 +9,10 @@ import (
 )
 
 func main() {
-	r := &requester.NATSRequesterFactory{
-		URL:         "nats://localhost:4222",
+	r := &requester.LiftbridgeRequesterFactory{
+		URLs:        []string{"localhost:9292"},
 		PayloadSize: 1000,
-		Subject:     "benchmark",
+		Stream:      "benchmark",
 	}
 
 	benchmark := bench.NewBenchmark(r, 100000, 1, 30*time.Second, 0)
@@ -22,5 +22,5 @@ func main() {
 	}
 
 	fmt.Println(summary)
-	summary.GenerateLatencyDistribution(nil, "nats.txt")
+	summary.GenerateLatencyDistribution(nil, "liftbridge.txt")
 }

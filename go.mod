@@ -8,6 +8,7 @@ require (
 	github.com/garyburd/redigo v1.6.2
 	github.com/gocql/gocql v0.0.0-20210707082121-9a3953d1826d
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/liftbridge-io/go-liftbridge/v2 v2.1.0
 	github.com/nats-io/nats-server/v2 v2.3.2 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.0 // indirect
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
