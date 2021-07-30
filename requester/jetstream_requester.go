@@ -71,6 +71,7 @@ func (j *jetstreamRequester) Setup() error {
 	j.inbound = make(chan nats.Msg)
 	sub, err := js.Subscribe(j.subject, func(m *nats.Msg) {
 		j.inbound <- *m
+		m.AckSync()
 	}, nats.Durable("bench_consumer"))
 	if err != nil {
 		j.inbound = nil
