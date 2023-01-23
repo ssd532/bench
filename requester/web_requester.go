@@ -3,7 +3,7 @@ package requester
 import (
 	"net/http"
 
-	"github.com/kishansairam9/bench/v2"
+	"github.com/ssd532/bench/v2"
 )
 
 // WebRequesterFactory implements RequesterFactory by creating a Requester

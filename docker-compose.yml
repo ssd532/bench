@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+  bench-rabbitmq:
+    image: bitnami/rabbitmq
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_stream advertised_host localhost"
+      RABBITMQ_PLUGINS: "rabbitmq_stream,rabbitmq_stream_management,rabbitmq_management,rabbitmq_prometheus"
+    ports:
+      - "5552:5552"
+      - "5672:5672"
+      - "15692:15672"
+    deploy:
+      resources:
+        limits:
+          memory: '1g'
+          cpus: '1.5'
+    networks:
+      - bench
+
+  bench-prometheus:
+    image: docker.io/bitnami/prometheus:2
+    ports:
+      - '9091:9090'
+
+    volumes:
+      - bench_prometheus_data:/opt/bitnami/prometheus/data
+      - ./prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+    networks:
+      - bench
+  bench-grafana:
+    image: docker.io/bitnami/grafana:9
+    ports:
+        - '3002:3000'
+    environment:
+        - 'GF_SECURITY_ADMIN_PASSWORD=bitnami'
+    volumes:
+        - bench_grafana_data:/opt/bitnami/grafana/data
+    networks:
+      - bench
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  bench_grafana_data:
+    driver: local
+  bench_prometheus_data:
+    driver: local
+
+networks:
+  bench:
+    driver: bridge

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kishansairam9/bench/v2"
 	lift "github.com/liftbridge-io/go-liftbridge/v2"
+	"github.com/ssd532/bench/v2"
 )
 
 // AMQPRequesterFactory implements RequesterFactory by creating a Requester

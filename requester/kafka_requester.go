@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/kishansairam9/bench/v2"
+	"github.com/ssd532/bench/v2"
 )
 
 // KafkaRequesterFactory implements RequesterFactory by creating a Requester
@@ -16,6 +16,8 @@ type KafkaRequesterFactory struct {
 	URLs        []string
 	PayloadSize int
 	Topic       string
+	DoConsume   bool
+	IsAsync     bool
 }
 
 // GetRequester returns a new Requester, called for each Benchmark connection.
@@ -24,6 +26,8 @@ func (k *KafkaRequesterFactory) GetRequester(num uint64) bench.Requester {
 		urls:        k.URLs,
 		payloadSize: k.PayloadSize,
 		topic:       k.Topic + "-" + strconv.FormatUint(num, 10),
+		doConsume:   k.DoConsume,
+		isAsync:     k.IsAsync,
 	}
 }
 
@@ -33,33 +37,62 @@ type kafkaRequester struct {
 	urls              []string
 	payloadSize       int
 	topic             string
-	producer          sarama.AsyncProducer
+	asyncProducer     sarama.AsyncProducer
+	syncProducer      sarama.SyncProducer
 	consumer          sarama.Consumer
 	partitionConsumer sarama.PartitionConsumer
 	msg               *sarama.ProducerMessage
+	doConsume         bool
+	isAsync           bool
 }
 
 // Setup prepares the Requester for benchmarking.
 func (k *kafkaRequester) Setup() error {
 	config := sarama.NewConfig()
-	producer, err := sarama.NewAsyncProducer(k.urls, config)
+	var err error
+	var asyncProducer sarama.AsyncProducer
+	var syncProducer sarama.SyncProducer
+	if k.isAsync {
+		asyncProducer, err = sarama.NewAsyncProducer(k.urls, config)
+	} else {
+		config.Producer.Return.Successes = true
+		syncProducer, err = sarama.NewSyncProducer(k.urls, config)
+	}
+
 	if err != nil {
 		return err
 	}
 
-	consumer, err := sarama.NewConsumer(k.urls, nil)
-	if err != nil {
-		producer.Close()
-		return err
-	}
-	partitionConsumer, err := consumer.ConsumePartition(k.topic, 0, sarama.OffsetNewest)
-	if err != nil {
-		producer.Close()
-		consumer.Close()
-		return err
+	var consumer sarama.Consumer
+	var partitionConsumer sarama.PartitionConsumer
+	if k.doConsume {
+		consumer, err = sarama.NewConsumer(k.urls, nil)
+		if err != nil {
+			if k.isAsync {
+				asyncProducer.Close()
+			} else {
+				syncProducer.Close()
+			}
+			return err
+		}
+
+		partitionConsumer, err = consumer.ConsumePartition(k.topic, 0, sarama.OffsetNewest)
+		if err != nil {
+			if k.isAsync {
+				asyncProducer.Close()
+			} else {
+				syncProducer.Close()
+			}
+			consumer.Close()
+			return err
+		}
 	}
 
-	k.producer = producer
+	if k.isAsync {
+		k.asyncProducer = asyncProducer
+	} else {
+		k.syncProducer = syncProducer
+	}
 	k.consumer = consumer
 	k.partitionConsumer = partitionConsumer
 	msg := make([]byte, k.payloadSize)
@@ -76,28 +109,48 @@ func (k *kafkaRequester) Setup() error {
 
 // Request performs a synchronous request to the system under test.
 func (k *kafkaRequester) Request() error {
-	k.producer.Input() <- k.msg
-	select {
-	case <-k.partitionConsumer.Messages():
-		return nil
-	case <-time.After(30 * time.Second):
-		return errors.New("requester: Request timed out receiving")
+	if k.isAsync {
+		k.asyncProducer.Input() <- k.msg
+	} else {
+		_, _, err := k.syncProducer.SendMessage(k.msg)
+		if err != nil {
+			panic("Error sending message: " + err.Error())
+		}
 	}
+
+	if k.doConsume {
+		select {
+		case <-k.partitionConsumer.Messages():
+			return nil
+		case <-time.After(30 * time.Second):
+			return errors.New("requester: Request timed out receiving")
+		}
+	}
+	return nil
 }
 
 // Teardown is called upon benchmark completion.
 func (k *kafkaRequester) Teardown() error {
-	if err := k.partitionConsumer.Close(); err != nil {
-		return err
+	if k.doConsume {
+		if err := k.partitionConsumer.Close(); err != nil {
+			return err
+		}
+		if err := k.consumer.Close(); err != nil {
+			return err
+		}
 	}
-	if err := k.consumer.Close(); err != nil {
-		return err
-	}
-	if err := k.producer.Close(); err != nil {
-		return err
+	if k.isAsync {
+		if err := k.asyncProducer.Close(); err != nil {
+			return err
+		}
+	} else {
+		if err := k.syncProducer.Close(); err != nil {
+			return err
+		}
 	}
 	k.partitionConsumer = nil
 	k.consumer = nil
-	k.producer = nil
+	k.asyncProducer = nil
+	k.syncProducer = nil
 	return nil
 }

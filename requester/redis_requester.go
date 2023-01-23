@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/kishansairam9/bench/v2"
+	"github.com/ssd532/bench/v2"
 )
 
 // RedisRequesterFactory implements RequesterFactory by creating a Requester

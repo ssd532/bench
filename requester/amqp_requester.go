@@ -2,10 +2,10 @@ package requester
 
 import (
 	"errors"
+	"github.com/ssd532/bench/v2"
 	"strconv"
 	"time"
 
-	"github.com/kishansairam9/bench/v2"
 	"github.com/streadway/amqp"
 )
 

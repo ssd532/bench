@@ -1,4 +1,4 @@
-module github.com/kishansairam9/bench/v2
+module github.com/ssd532/bench/v2
 
 go 1.16
 
@@ -9,7 +9,7 @@ require (
 	github.com/gocql/gocql v0.0.0-20210707082121-9a3953d1826d
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/liftbridge-io/go-liftbridge/v2 v2.1.0
-	github.com/nats-io/jsm.go v0.0.25
+	github.com/nats-io/nats-server/v2 v2.3.3-0.20210719165541-e8fea67b1a38 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.0 // indirect
 	github.com/nats-io/nats.go v1.11.1-0.20210623165838-4b75fc59ae30
 	github.com/nats-io/stan.go v0.9.0

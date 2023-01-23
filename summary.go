@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	histwriter "github.com/kishansairam9/bench/v2/hdrhistogram-writer"
+	histwriter "github.com/ssd532/bench/v2/hdrhistogram-writer"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
 )

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kishansairam9/bench/v2"
-	"github.com/kishansairam9/bench/v2/requester"
+	"github.com/ssd532/bench/v2"
+	"github.com/ssd532/bench/v2/requester"
 )
 
 func main() {
@@ -13,14 +13,16 @@ func main() {
 		URLs:        []string{"localhost:9092"},
 		PayloadSize: 1000,
 		Topic:       "benchmark",
+		DoConsume:   false,
+		IsAsync:     false,
 	}
 
-	benchmark := bench.NewBenchmark(r, 20000, 25, 30*time.Second, 0)
+	benchmark := bench.NewBenchmark(r, 1000000, 3, 600*time.Second, 0)
 	summary, err := benchmark.Run()
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println(summary)
-	summary.GenerateLatencyDistribution(nil, "kafka.txt")
+	summary.GenerateLatencyDistribution(nil, "out/kafka-noconsume-payload-1k-persec-1m-nconn-3-dur-10m.txt")
 }

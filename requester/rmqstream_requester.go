@@ -2,14 +2,13 @@ package requester
 
 import (
 	"errors"
-	"math/rand"
-	"strconv"
-	"time"
-
-	"github.com/kishansairam9/bench/v2"
 	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/amqp"
 	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/message"
 	"github.com/rabbitmq/rabbitmq-stream-go-client/pkg/stream"
+	"github.com/ssd532/bench/v2"
+	"math/rand"
+	"strconv"
+	"time"
 )
 
 // AMQPRequesterFactory implements RequesterFactory by creating a Requester
@@ -18,6 +17,7 @@ type RMQStreamRequesterFactory struct {
 	URLs        []string
 	PayloadSize int
 	Stream      string
+	DoConsume   bool
 }
 
 // GetRequester returns a new Requester, called for each Benchmark connection.
@@ -26,6 +26,7 @@ func (r *RMQStreamRequesterFactory) GetRequester(num uint64) bench.Requester {
 		urls:        r.URLs,
 		payloadSize: r.PayloadSize,
 		stream:      r.Stream + "-" + strconv.FormatUint(num, 10),
+		doConsume:   r.DoConsume,
 	}
 }
 
@@ -40,16 +41,13 @@ type rmqstreamRequester struct {
 	msg         *amqp.AMQP10
 	inbound     chan amqp.Message
 	env         *stream.Environment
+	doConsume   bool
 }
 
 // Setup prepares the Requester for benchmarking.
 func (r *rmqstreamRequester) Setup() error {
 	env, err := stream.NewEnvironment(
-		stream.NewEnvironmentOptions().
-			SetHost("localhost").
-			SetPort(5552).
-			SetUser("guest").
-			SetPassword("guest"))
+		stream.NewEnvironmentOptions().SetUris(r.urls))
 	if err != nil {
 		return err
 	}
@@ -71,16 +69,20 @@ func (r *rmqstreamRequester) Setup() error {
 		r.inbound <- *message
 	}
 
-	consumer, err := env.NewConsumer(
-		r.stream,
-		handleMessages,
-		stream.NewConsumerOptions().
-			SetConsumerName("benchmark_consumer").
-			SetOffset(stream.OffsetSpecification{}.First()))
-	if err != nil {
-		r.inbound = nil
-		return err
+	var consumer *stream.Consumer
+	if r.doConsume {
+		consumer, err = env.NewConsumer(
+			r.stream,
+			handleMessages,
+			stream.NewConsumerOptions().
+				SetConsumerName("benchmark_consumer").
+				SetOffset(stream.OffsetSpecification{}.First()))
+		if err != nil {
+			r.inbound = nil
+			return err
+		}
 	}
+
 	r.env = env
 	r.producer = producer
 	r.consumer = consumer
@@ -97,10 +99,13 @@ func (r *rmqstreamRequester) Request() error {
 	if err := r.producer.BatchSend([]message.StreamMessage{r.msg}); err != nil {
 		return err
 	}
-	select {
-	case <-r.inbound:
-	case <-time.After(30 * time.Second):
-		return errors.New("requester: Request timed out receiving")
+	if r.doConsume {
+		select {
+		case <-r.inbound:
+		case <-time.After(30 * time.Second):
+			return errors.New("requester: Request timed out receiving")
+		}
+
 	}
 	return nil
 }
@@ -110,9 +115,12 @@ func (r *rmqstreamRequester) Teardown() error {
 	if err := r.producer.Close(); err != nil {
 		return err
 	}
-	if err := r.consumer.Close(); err != nil {
-		return err
+	if r.doConsume {
+		if err := r.consumer.Close(); err != nil {
+			return err
+		}
 	}
+
 	if err := r.env.DeleteStream(r.stream); err != nil {
 		return err
 	}
